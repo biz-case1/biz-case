@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
-import io
 
 # Page configuration
 st.set_page_config(
@@ -132,9 +131,19 @@ def calculate_benefits(inputs, case_multipliers, currency='USD'):
     
     # Apply case multipliers to improvements
     target_dso = current_dso - (10 * case_multipliers['dso_improvement'])
-    target_error_rate = current_error_rate - ((current_error_rate - 8) * case_multipliers['error_reduction'])
-    target_leakage = current_leakage - ((current_leakage - 3) * case_multipliers['leakage_reduction'])
-    target_cycle_days = current_cycle_days - (2.2 * case_multipliers['cycle_time_improvement'])
+
+    # Error rate reduction: reduce by a percentage of current rate (not relative to a baseline)
+    # This ensures the target is always lower than current, regardless of starting point
+    error_reduction_pct = 0.40 * case_multipliers['error_reduction']  # Base 40% reduction
+    target_error_rate = max(1.0, current_error_rate * (1 - error_reduction_pct))
+
+    # Leakage reduction: reduce by a percentage of current rate (not relative to a baseline)
+    # This ensures the target is always lower than current, regardless of starting point
+    leakage_reduction_pct = 0.50 * case_multipliers['leakage_reduction']  # Base 50% reduction
+    target_leakage = max(0.5, current_leakage * (1 - leakage_reduction_pct))
+
+    # Cycle time improvement with floor to prevent negative values
+    target_cycle_days = max(0.5, current_cycle_days - (2.2 * case_multipliers['cycle_time_improvement']))
     
     # Automation rate based on case
     base_automation_improvement = 23  # percentage points
